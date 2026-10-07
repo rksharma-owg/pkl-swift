@@ -135,13 +135,33 @@ jobs:
       with:
         ruby-version: '3.4'
     - run: gem install xcpretty
+    - name: Install matching simulator runtime
+      env:
+        SIM_PLATFORM: iOS
+        SIM_DEVICE: iPhone 17
+      run: |
+        xcodebuild -runFirstLaunch
+        xcodebuild -downloadPlatform "$SIM_PLATFORM" -buildVersion 26.1 -architectureVariant arm64
+        python3 - <<'PYCODE'
+        import json, os, subprocess
+        platform = os.environ['SIM_PLATFORM']
+        name = os.environ['SIM_DEVICE']
+        types = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devicetypes', '-j']))['devicetypes']
+        runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '-j']))['runtimes']
+        device = next(t['identifier'] for t in types if t['name'] == name)
+        runtime = next(t['identifier'] for t in runtimes if t['name'] == platform + ' 26.1' and t['isAvailable'])
+        device_id = subprocess.check_output(['xcrun', 'simctl', 'create', name, device, runtime], text=True).strip()
+        with open(os.environ['GITHUB_ENV'], 'a') as env:
+            env.write('SIM_ID=' + device_id + '\n')
+        PYCODE
+        xcrun simctl list runtimes
     - name: xcodebuild test
       env:
         LC_CTYPE: en_US.UTF-8
       shell: bash
       run: |-
         set -o pipefail
-        xcodebuild -scheme pkl-swift-Package -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
+        xcodebuild -scheme pkl-swift-Package -sdk iphonesimulator -destination "id=$SIM_ID" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
           | xcpretty --report junit --output .out/test-results/test-sim-ios-simulator.xml
     - name: Upload Test Result XML
       if: '!cancelled()'
@@ -178,13 +198,33 @@ jobs:
       with:
         ruby-version: '3.4'
     - run: gem install xcpretty
+    - name: Install matching simulator runtime
+      env:
+        SIM_PLATFORM: watchOS
+        SIM_DEVICE: Apple Watch Series 11 (42mm)
+      run: |
+        xcodebuild -runFirstLaunch
+        xcodebuild -downloadPlatform "$SIM_PLATFORM" -buildVersion 26.1 -architectureVariant arm64
+        python3 - <<'PYCODE'
+        import json, os, subprocess
+        platform = os.environ['SIM_PLATFORM']
+        name = os.environ['SIM_DEVICE']
+        types = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devicetypes', '-j']))['devicetypes']
+        runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '-j']))['runtimes']
+        device = next(t['identifier'] for t in types if t['name'] == name)
+        runtime = next(t['identifier'] for t in runtimes if t['name'] == platform + ' 26.1' and t['isAvailable'])
+        device_id = subprocess.check_output(['xcrun', 'simctl', 'create', name, device, runtime], text=True).strip()
+        with open(os.environ['GITHUB_ENV'], 'a') as env:
+            env.write('SIM_ID=' + device_id + '\n')
+        PYCODE
+        xcrun simctl list runtimes
     - name: xcodebuild test
       env:
         LC_CTYPE: en_US.UTF-8
       shell: bash
       run: |-
         set -o pipefail
-        xcodebuild -scheme pkl-swift-Package -sdk watchsimulator -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (42mm)' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
+        xcodebuild -scheme pkl-swift-Package -sdk watchsimulator -destination "id=$SIM_ID" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
           | xcpretty --report junit --output .out/test-results/test-sim-watchos-simulator.xml
     - name: Upload Test Result XML
       if: '!cancelled()'
@@ -221,13 +261,33 @@ jobs:
       with:
         ruby-version: '3.4'
     - run: gem install xcpretty
+    - name: Install matching simulator runtime
+      env:
+        SIM_PLATFORM: tvOS
+        SIM_DEVICE: Apple TV 4K (3rd generation)
+      run: |
+        xcodebuild -runFirstLaunch
+        xcodebuild -downloadPlatform "$SIM_PLATFORM" -buildVersion 26.1 -architectureVariant arm64
+        python3 - <<'PYCODE'
+        import json, os, subprocess
+        platform = os.environ['SIM_PLATFORM']
+        name = os.environ['SIM_DEVICE']
+        types = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devicetypes', '-j']))['devicetypes']
+        runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '-j']))['runtimes']
+        device = next(t['identifier'] for t in types if t['name'] == name)
+        runtime = next(t['identifier'] for t in runtimes if t['name'] == platform + ' 26.1' and t['isAvailable'])
+        device_id = subprocess.check_output(['xcrun', 'simctl', 'create', name, device, runtime], text=True).strip()
+        with open(os.environ['GITHUB_ENV'], 'a') as env:
+            env.write('SIM_ID=' + device_id + '\n')
+        PYCODE
+        xcrun simctl list runtimes
     - name: xcodebuild test
       env:
         LC_CTYPE: en_US.UTF-8
       shell: bash
       run: |-
         set -o pipefail
-        xcodebuild -scheme pkl-swift-Package -sdk appletvsimulator -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
+        xcodebuild -scheme pkl-swift-Package -sdk appletvsimulator -destination "id=$SIM_ID" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
           | xcpretty --report junit --output .out/test-results/test-sim-tvos-simulator.xml
     - name: Upload Test Result XML
       if: '!cancelled()'
