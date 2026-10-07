@@ -14,7 +14,7 @@ permissions:
   contents: read
 jobs:
   test-sim-ios-simulator:
-    runs-on: macos-26
+    runs-on: macos-15-arm64
     env:
       XCODE_VERSION: '26.1'
     steps:
@@ -47,7 +47,9 @@ jobs:
         SIM_DEVICE: iPhone 17
       run: |
         xcodebuild -runFirstLaunch
-        xcodebuild -downloadPlatform "$SIM_PLATFORM" -architectureVariant universal
+        if ! xcrun simctl list runtimes | grep -q 'iOS 26.1'; then
+          xcodebuild -downloadPlatform "$SIM_PLATFORM" -architectureVariant universal
+        fi
         python3 - <<'PYCODE'
         import json, os, subprocess
         platform = os.environ['SIM_PLATFORM']
@@ -65,7 +67,14 @@ jobs:
     - name: Boot verified simulator
       run: |
         xcrun simctl boot "$SIM_ID"
-        xcrun simctl bootstatus "$SIM_ID" -b
+        python3 - <<'PYBOOT'
+        import subprocess, os
+        try:
+            subprocess.run(['xcrun', 'simctl', 'bootstatus', os.environ['SIM_ID'], '-b'], check=True, timeout=600)
+        except subprocess.TimeoutExpired:
+            subprocess.run(['xcrun', 'simctl', 'list', 'devices', 'available'], check=True)
+            raise
+        PYBOOT
     - name: xcodebuild test
       env:
         LC_CTYPE: en_US.UTF-8
