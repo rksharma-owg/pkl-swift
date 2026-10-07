@@ -75,12 +75,29 @@ facts {
     importedType.render("TypeAlias") == "PklSwift.TypeAlias"
     importedType.renderGeneric("TypeAlias") == "PklSwift.TypeAlias"
     importedType.renderEnumCaseName("TypeAlias").first == "TypeAlias"
+    new Type.Declared { typeName = "Set"; typeArguments = List(importedType) }
+      .renderEnumCaseName("Config")
+      .first == "SetTypeAlias"
     ((importedType) { namespaceName = "Config"; swiftModuleName = "Custom" }).render("Config")
       == "TypeAlias"
     ((importedType) { namespaceName = "Config"; swiftModuleName = "Custom" }).renderGeneric("Other")
       == "Config.TypeAlias"
     ((importedType) { isPolymorphic = true }).render("TypeAlias") == "any PklSwift.TypeAlias"
     ((importedType) { isPolymorphic = true }).renderGeneric("TypeAlias") == "PklSwift.PklAny"
+  }
+
+  ["generic enum case names preserve qualified dictionary keys"] {
+    new Type.Declared {
+      typeName = "Set"
+      typeArguments =
+        List(new Type.Dictionary {
+          key = new Type.Optional { elem = new Type.Declared { typeName = "String" } }
+          elem = new Type.Declared { typeName = "Bool" }
+          pklTypeName = "Map"
+        })
+    }
+      .renderEnumCaseName("Config")
+      .first == "SetPklSwiftOptionalDictionaryKeyStringBool"
   }
 
   ["basic types"] {

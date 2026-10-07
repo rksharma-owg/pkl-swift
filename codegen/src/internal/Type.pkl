@@ -233,9 +233,14 @@ class Declared extends Type {
     renderBaseGeneric(withinNamespace) + renderTypeArgumentsGeneric(withinNamespace)
 
   function renderEnumCaseName(withinNamespace: String?): Pair<String, String> =
-    let (unqualified = (this) { swiftModuleName = null })
-      Pair(
-        utils.normalizeName(unqualified.render(withinNamespace).replaceFirst(Regex("^any "), "")),
-        "",
-      )
+    // Runtime type qualification must not rename existing enum cases.
+    // OptionalDictionaryKey was already qualified before runtime types were.
+    Pair(
+      utils.normalizeName(
+        render(withinNamespace)
+          .replaceFirst(Regex("^any "), "")
+          .replaceAll(Regex(#"\bPklSwift\.(?!OptionalDictionaryKey\b)"#), ""),
+      ),
+      "",
+    )
 }
