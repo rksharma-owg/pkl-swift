@@ -56,7 +56,9 @@ jobs:
         runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '-j']))['runtimes']
         device = next(t['identifier'] for t in types if t['name'] == name)
         runtime = next(t['identifier'] for t in runtimes if t['name'] == platform + ' 26.1' and t['isAvailable'])
-        subprocess.run(['xcrun', 'simctl', 'create', name, device, runtime], check=True)
+        device_id = subprocess.check_output(['xcrun', 'simctl', 'create', name, device, runtime], text=True).strip()
+        with open(os.environ['GITHUB_ENV'], 'a') as env:
+            env.write('SIM_ID=' + device_id + '\n')
         PYCODE
         xcrun simctl list runtimes
     - name: xcodebuild test
@@ -65,7 +67,7 @@ jobs:
       shell: bash
       run: |-
         set -o pipefail
-        xcodebuild -scheme pkl-swift-Package -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
+        xcodebuild -scheme pkl-swift-Package -sdk iphonesimulator -destination "id=$SIM_ID" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
           | xcpretty --report junit --output .out/test-results/test-sim-ios-simulator.xml
     - name: Upload Test Result XML
       if: '!cancelled()'
@@ -117,7 +119,9 @@ jobs:
         runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '-j']))['runtimes']
         device = next(t['identifier'] for t in types if t['name'] == name)
         runtime = next(t['identifier'] for t in runtimes if t['name'] == platform + ' 26.1' and t['isAvailable'])
-        subprocess.run(['xcrun', 'simctl', 'create', name, device, runtime], check=True)
+        device_id = subprocess.check_output(['xcrun', 'simctl', 'create', name, device, runtime], text=True).strip()
+        with open(os.environ['GITHUB_ENV'], 'a') as env:
+            env.write('SIM_ID=' + device_id + '\n')
         PYCODE
         xcrun simctl list runtimes
     - name: xcodebuild test
@@ -126,7 +130,7 @@ jobs:
       shell: bash
       run: |-
         set -o pipefail
-        xcodebuild -scheme pkl-swift-Package -sdk watchsimulator -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (42mm),OS=26.1' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
+        xcodebuild -scheme pkl-swift-Package -sdk watchsimulator -destination "id=$SIM_ID" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
           | xcpretty --report junit --output .out/test-results/test-sim-watchos-simulator.xml
     - name: Upload Test Result XML
       if: '!cancelled()'
@@ -178,7 +182,9 @@ jobs:
         runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '-j']))['runtimes']
         device = next(t['identifier'] for t in types if t['name'] == name)
         runtime = next(t['identifier'] for t in runtimes if t['name'] == platform + ' 26.1' and t['isAvailable'])
-        subprocess.run(['xcrun', 'simctl', 'create', name, device, runtime], check=True)
+        device_id = subprocess.check_output(['xcrun', 'simctl', 'create', name, device, runtime], text=True).strip()
+        with open(os.environ['GITHUB_ENV'], 'a') as env:
+            env.write('SIM_ID=' + device_id + '\n')
         PYCODE
         xcrun simctl list runtimes
     - name: xcodebuild test
@@ -187,7 +193,7 @@ jobs:
       shell: bash
       run: |-
         set -o pipefail
-        xcodebuild -scheme pkl-swift-Package -sdk appletvsimulator -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=26.1' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
+        xcodebuild -scheme pkl-swift-Package -sdk appletvsimulator -destination "id=$SIM_ID" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
           | xcpretty --report junit --output .out/test-results/test-sim-tvos-simulator.xml
     - name: Upload Test Result XML
       if: '!cancelled()'
