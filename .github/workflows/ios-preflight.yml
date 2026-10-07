@@ -1,0 +1,83 @@
+name: Pkl iOS compatible-runtime preflight
+on:
+  workflow_dispatch:
+    inputs:
+      code_sha:
+        description: Exact contribution commit
+        required: true
+        type: string
+      base_sha:
+        description: Exact upstream baseline
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  test-sim-ios-simulator:
+    runs-on: macos-26
+    env:
+      XCODE_VERSION: '26.1'
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      with:
+        persist-credentials: false
+        ref: ${{ inputs.code_sha }}
+        fetch-depth: 0
+    - name: Select and record Xcode
+      env:
+        EXPECTED_SHA: ${{ inputs.code_sha }}
+        BASE_SHA: ${{ inputs.base_sha }}
+      run: |
+        test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+        git merge-base --is-ancestor "$BASE_SHA" HEAD
+        if [ -d /Applications/Xcode_26.1.app ]; then
+          sudo xcode-select -s /Applications/Xcode_26.1.app
+        fi
+        xcodebuild -version
+        xcodebuild -showsdks
+        xcrun simctl list devices available
+    - run: brew install gmp libyaml
+    - uses: ruby/setup-ruby@762794c140bbeda0f1224786aa33b4b46783a6c1 # v1
+      with:
+        ruby-version: '3.4'
+    - run: gem install xcpretty
+    - name: Install matching simulator runtime
+      env:
+        SIM_PLATFORM: iOS
+        SIM_DEVICE: iPhone 17
+      run: |
+        xcodebuild -runFirstLaunch
+        xcodebuild -downloadPlatform "$SIM_PLATFORM" -buildVersion 26.1.1 -architectureVariant arm64
+        python3 - <<'PYCODE'
+        import json, os, subprocess
+        platform = os.environ['SIM_PLATFORM']
+        name = os.environ['SIM_DEVICE']
+        types = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devicetypes', '-j']))['devicetypes']
+        runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '-j']))['runtimes']
+        device = next(t['identifier'] for t in types if t['name'] == name)
+        runtime = next(t['identifier'] for t in runtimes if t['name'].startswith(platform + ' 26.1') and t['isAvailable'])
+        device_id = subprocess.check_output(['xcrun', 'simctl', 'create', name, device, runtime], text=True).strip()
+        with open(os.environ['GITHUB_ENV'], 'a') as env:
+            env.write('SIM_ID=' + device_id + '\n')
+        PYCODE
+        xcrun simctl list runtimes
+        xcrun simctl list devices available
+    - name: Boot verified simulator
+      run: |
+        xcrun simctl boot "$SIM_ID"
+        xcrun simctl bootstatus "$SIM_ID" -b
+    - name: xcodebuild test
+      env:
+        LC_CTYPE: en_US.UTF-8
+      shell: bash
+      run: |-
+        set -o pipefail
+        xcodebuild -scheme pkl-swift-Package -sdk iphonesimulator -destination "id=$SIM_ID" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES COMPILER_INDEX_STORE_ENABLE=NO test \
+          | xcpretty --report junit --output .out/test-results/test-sim-ios-simulator.xml
+    - name: Upload Test Result XML
+      if: '!cancelled()'
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+      with:
+        name: test-results-xml-test-sim-ios-simulator
+        path: .out/test-results/**/*.xml
+        if-no-files-found: ignore
